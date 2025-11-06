@@ -61,11 +61,13 @@ This project implements a production-ready pneumatic pump controller for industr
   - Slow Zone (70-90%): 40% pressure
   - Fine Zone (90-98%): 20% pressure
 
-- **Safety Interlocks**: 4-stage mandatory safety checklist
-  1. Air line connection verification
-  2. Fill hose connection verification
-  3. Tank/valve positioning verification
-  4. Final start confirmation
+- **Safety Interlocks**: 4-stage mandatory safety checklist (LCD-based)
+  1. Air line connection verification - confirm on LCD
+  2. Fill hose connection verification - confirm on LCD
+  3. Tank/valve positioning verification - confirm on LCD
+  4. Final start confirmation - confirm on LCD
+  - All confirmations use rotary encoder button
+  - No separate safety buttons required!
 
 - **Real-Time Feedback**: PNP switch monitoring from ITV2030 for pressure verification
 
@@ -122,9 +124,7 @@ This project implements a production-ready pneumatic pump controller for industr
        │
        ├──► LCD 1602 (I2C) ──► Local Display
        │
-       ├──► Rotary Encoder ──► User Input
-       │
-       ├──► Safety Buttons (4×) ──► Safety Interlocks
+       ├──► Rotary Encoder ──► User Input + Safety Confirmations
        │
        └──► WiFi ──► MQTT Broker ──► Telegraf ──► TimescaleDB ──► Grafana
                       │
@@ -161,22 +161,20 @@ This project implements a production-ready pneumatic pump controller for industr
 | Component | Specification | Qty |
 |-----------|---------------|-----|
 | LCD Display | 1602 with I2C backpack | 1 |
-| Rotary Encoder | KY-040 or similar | 1 |
+| Rotary Encoder | KY-040 or similar (includes button for safety confirms) | 1 |
 | MAX3232 | RS232 level shifter module | 1 |
 | LM358 | Dual op-amp (DAC amplifier) | 1 |
-| Safety Buttons | 24V illuminated momentary | 4 |
 
 ### Power System
 
 ```
 24V DC Input
 ├─── ITV2030: 24V @ 100mA
-├─── Safety LEDs: 24V @ 80mA
 ├─── Buck 24V→12V: LCD backlight, LM358 op-amp
 └─── Buck 24V→5V: ESP32, peripherals
 ```
 
-**Total Power Consumption**: ~2-3A @ 24V
+**Total Power Consumption**: ~1.5-2A @ 24V (2.5A if using optional WS2812 LEDs)
 
 ### Detailed Schematics
 
@@ -203,7 +201,7 @@ See [`docs/HARDWARE_SCHEMATIC_24V.md`](docs/HARDWARE_SCHEMATIC_24V.md) for:
    - Wire UART to MAX3232 (GPIO16/17)
    - Wire DAC to LM358 op-amp (GPIO25)
    - Connect rotary encoder (GPIO32/33/34)
-   - Wire safety buttons and LEDs (see schematic)
+   - Safety checks use LCD + encoder button (no separate buttons needed!)
 
 3. **External Connections**
    - Connect scale RS232 cable

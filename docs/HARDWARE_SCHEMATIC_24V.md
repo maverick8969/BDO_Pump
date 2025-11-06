@@ -32,13 +32,12 @@ This document provides complete wiring diagrams and component specifications for
        │
        ├────────────► ITV2030 Electropneumatic Regulator (24V)
        │
-       ├────────────► Illuminated Safety Buttons (24V)
-       │
        ├──[Buck 24V→12V]──► LCD Backlight (12V)
        │                  └► LM358 Op-Amp Power (12V)
        │
        └──[Buck 24V→5V]────► ESP32-DevKit (5V via USB/Vin)
                             └► PS-IN202 Scale (if 5V/12V DC model)
+                            └► WS2812 LED Strip (5V, optional)
 ```
 
 ---
@@ -48,10 +47,9 @@ This document provides complete wiring diagrams and component specifications for
 ### Primary Power Distribution
 
 ```
-24V DC Input (2-3A recommended)
+24V DC Input (1.5-2A recommended)
 │
 ├─── ITV2030 Pneumatic Regulator: 24V @ 100mA
-├─── Safety Button LEDs (4×): 24V @ 80mA (4× 20mA)
 │
 ├───[LM2596 Buck 24V→12V, 1A]
 │    ├─── LCD Backlight: 12V @ 30mA
@@ -68,10 +66,9 @@ This document provides complete wiring diagrams and component specifications for
 | ESP32-DevKit | 5V | 250-500mA | Via USB or Vin (has onboard 3.3V regulator) |
 | ITV2030-33N2 | 24V | ~100mA | Electropneumatic regulator |
 | LCD 1602 | 5V logic, 12V backlight | 30mA | I2C backpack |
-| WS2812 LEDs (30) | 5V | 1.8A max | @ full brightness white |
-| Safety Buttons (4) | 24V | 20mA each | Illuminated LEDs |
+| WS2812 LEDs (30) | 5V | 1.8A max | @ full brightness white (optional) |
 | LM358 Op-Amp | 12V | 10mA | DAC output amplifier |
-| Total Estimated | 24V input | **2-3A** | With safety margin |
+| Total Estimated | 24V input | **1.5-2.5A** | With safety margin (2.5A if using WS2812 at full brightness) |
 
 ### Buck Converters
 
@@ -137,17 +134,10 @@ This document provides complete wiring diagrams and component specifications for
 | GPIO22 | I2C SCL | LCD SCL | I2C Clock |
 | GPIO32 | Encoder CLK | Rotary Encoder A | Digital Input |
 | GPIO33 | Encoder DT | Rotary Encoder B | Digital Input |
-| GPIO34 | Encoder SW | Rotary Encoder Button | Digital Input (input-only) |
+| GPIO34 | Encoder SW | Rotary Encoder Button (also for safety confirms) | Digital Input (input-only) |
 | GPIO27 | LED Strip | WS2812 Data In | Digital Output |
-| GPIO35 | Safety Btn 1 | Air Check Button | Digital Input (input-only) |
-| GPIO36 | Safety Btn 2 | Hose Check Button | Digital Input (input-only) |
-| GPIO39 | Safety Btn 3 | Position Check Button | Digital Input (input-only) |
-| GPIO14 | Safety Btn 4 | Start Confirm Button | Digital Input |
-| GPIO13 | Safety LED 1 | Air Check LED | Digital Output |
-| GPIO12 | Safety LED 2 | Hose Check LED | Digital Output |
-| GPIO15 | Safety LED 3 | Position Check LED | Digital Output |
-| GPIO4 | Safety LED 4 | Start Confirm LED | Digital Output |
 | GPIO26 | ITV Feedback | ITV2030 PNP Output | Digital Input |
+| GPIO35-39, GPIO14, GPIO12-15, GPIO4 | (Available) | Unused - can be used for future expansion | - |
 
 ---
 
@@ -257,44 +247,41 @@ If not, add external 10kΩ pull-ups to 3.3V on CLK, DT, and SW pins.
 
 ---
 
-### 5. Safety Interlock Buttons (24V Illuminated)
+### 5. Safety Interlock System (LCD-Based)
 
-Each button has:
-- Normally Open (NO) contacts
-- Built-in LED (24V)
+**No separate safety buttons required!**
+
+Safety checks are performed using LCD display prompts with rotary encoder button confirmation:
 
 ```
-Button 1 (Air Line Check):
+Safety Check Sequence (displayed on LCD):
 
-24V ────┬───[LED]───────► GND (button LED power)
-        │
-        └───[Switch]────┬► To GPIO35 (via voltage divider)
-                        │
-                        └───[10kΩ]───► 3.3V (pull-up)
+Check 1: "Air Line OK?"
+         "Press to confirm"
+         [Wait for encoder button press]
 
-LED Control from ESP32:
-GPIO13 ──────[2N2222 NPN]──────┬─── 24V
-                  │             │
-                 GND           [LED]───► Button LED+
-                                │
-                               GND
+Check 2: "Fill Hose OK?"
+         "Press to confirm"
+         [Wait for encoder button press]
 
-Voltage Divider for 24V → 3.3V:
-24V Signal ────[18kΩ]────┬────► GPIO (safe 3.3V)
-                         │
-                      [3.3kΩ]
-                         │
-                        GND
+Check 3: "Tank Position?"
+         "Press to confirm"
+         [Wait for encoder button press]
 
-Ratio: 3.3kΩ / (18kΩ + 3.3kΩ) = 0.155
-24V × 0.155 = 3.72V (close to 3.3V, add series diode if needed)
+Check 4: "Ready to Fill?"
+         "Press to START"
+         [Wait for encoder button press]
+
+Each check has 30-second timeout.
+Encoder button (GPIO34) is used for all confirmations.
 ```
 
-**Repeat for all 4 buttons:**
-- Button 1 → GPIO35 (input) + GPIO13 (LED control)
-- Button 2 → GPIO36 (input) + GPIO12 (LED control)
-- Button 3 → GPIO39 (input) + GPIO15 (LED control)
-- Button 4 → GPIO14 (input) + GPIO4 (LED control)
+**Benefits:**
+- Simplified hardware (no additional buttons needed)
+- Lower cost (saves ~$20)
+- Reduced wiring complexity
+- Still maintains 4-stage safety verification
+- Clear visual prompts on LCD
 
 ---
 
@@ -374,22 +361,18 @@ Notes:
 | 1 | Rotary Encoder | KY-040 or similar with button | $2.50 |
 | 1 | MAX3232 | RS232 level shifter module | $2.00 |
 | 1 | LM358 | Dual op-amp DIP-8 IC | $0.50 |
-| 4 | Safety Buttons | 24V illuminated momentary (16mm) | $20.00 |
 | 1 | WS2812 Strip | 30 LED strip, 5V (optional) | $8.00 |
 
 ### Passive Components
 
 | Qty | Part | Description | Est. Cost |
 |-----|------|-------------|-----------|
-| 2 | 10kΩ 1% | Metal film resistor, 1/4W | $0.20 |
-| 1 | 20kΩ 1% | Metal film resistor, 1/4W | $0.10 |
+| 2 | 10kΩ 1% | Metal film resistor, 1/4W (DAC circuit) | $0.20 |
+| 1 | 20kΩ 1% | Metal film resistor, 1/4W (DAC circuit) | $0.10 |
 | 1 | 330Ω | Resistor for WS2812 data | $0.05 |
-| 8 | 10kΩ | Pull-up/pull-down resistors | $0.40 |
-| 4 | 18kΩ | Voltage divider (high side) | $0.20 |
-| 4 | 3.3kΩ | Voltage divider (low side) | $0.20 |
-| 5 | 0.1µF | Ceramic capacitors | $0.50 |
-| 1 | 1000µF | Electrolytic cap (LED strip) | $0.50 |
-| 4 | 2N2222 | NPN transistors (LED drivers) | $0.40 |
+| 3 | 10kΩ | Pull-up resistors (encoder, ITV feedback) | $0.15 |
+| 5 | 0.1µF | Ceramic capacitors (decoupling) | $0.50 |
+| 1 | 1000µF | Electrolytic cap (LED strip, optional) | $0.50 |
 
 ### Wiring and Enclosure
 
@@ -401,7 +384,12 @@ Notes:
 | 1 | Perfboard/PCB | Prototype board for circuits | $5.00 |
 | 1 | Connectors | JST, Dupont, misc connectors | $5.00 |
 
-**Total Estimated Cost: ~$110** (excluding ITV2030 and scale)
+**Total Estimated Cost: ~$88** (excluding ITV2030 and scale)
+
+**Cost Savings vs Original Design:**
+- No separate safety buttons: -$20.00
+- Fewer resistors/transistors: -$1.50
+- **Total Savings: ~$21.50**
 
 ---
 

@@ -70,20 +70,11 @@
 #define PIN_LED_STRIP 27
 #define LED_STRIP_COUNT 30
 
-// Safety Interlock Buttons
-#define PIN_SAFETY_BTN1 35 // Air line check button
-#define PIN_SAFETY_BTN2 36 // Hose check button
-#define PIN_SAFETY_BTN3 39 // Position check button
-#define PIN_SAFETY_BTN4 14 // Start confirm button
-
-// Safety Button LEDs (illuminate button status)
-#define PIN_SAFETY_LED1 13
-#define PIN_SAFETY_LED2 12
-#define PIN_SAFETY_LED3 15
-#define PIN_SAFETY_LED4 4
-
 // ITV2030 PNP Feedback (pressure reached indicator)
 #define PIN_ITV_FEEDBACK 26 // NPN/PNP switch output from ITV2030
+
+// Note: Safety interlocks use LCD display + rotary encoder button
+// No separate safety buttons required - encoder SW pin (GPIO34) is used
 
 /* =============================================================================
  * SCALE CONFIGURATION (PS-IN202)

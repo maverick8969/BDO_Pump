@@ -186,14 +186,33 @@ static void control_task_fill_logic(void)
  * @brief Display task
  *
  * Updates LCD and handles rotary encoder input
+ * Also manages safety check sequence with LCD prompts
  */
 static void display_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "Display task started");
 
     display_init();
+    safety_init();
 
     while (1) {
+        // If in safety check mode, run safety sequence
+        if (g_system_state.state == STATE_SAFETY_CHECK) {
+            esp_err_t result = safety_run_checks();
+
+            if (result == ESP_OK) {
+                // All safety checks passed, proceed to filling
+                g_system_state.state = STATE_FILLING;
+                g_system_state.fill_start_time_ms = esp_timer_get_time() / 1000;
+                mqtt_publish_event("fill_start", "Safety checks passed, fill starting");
+            } else if (result == ESP_FAIL) {
+                // Safety checks failed or cancelled
+                g_system_state.state = STATE_CANCELLED;
+                mqtt_publish_event("safety_check_failed", "Safety checks cancelled or timeout");
+            }
+            // ESP_ERR_INVALID_STATE means checks still in progress
+        }
+
         // Update LCD display based on current state
         display_update(&g_system_state);
 
